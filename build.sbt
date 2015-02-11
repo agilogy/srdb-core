@@ -1,6 +1,6 @@
 import bintray.Keys._
 
-organization := "com.agilogy.srdb"
+organization := "com.agilogy"
 
 name := "srdb-core"
 
