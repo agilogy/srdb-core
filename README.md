@@ -1,5 +1,7 @@
 # SRDB: Scala Relational DataBase Api
 
+[![Build Status](https://travis-ci.org/agilogy/srdb-core.svg?branch=master)](https://travis-ci.org/agilogy/srdb-core)
+
 This is a Work In Progress...
 
 ## TO-DO
