@@ -9,4 +9,3 @@ This is a Work In Progress...
     - Include the reader in the exception if appropriate
 - Check the select "template" against Spring JdbcTemplate or something else
 - Publish it as open source
-- Add Travis CI
