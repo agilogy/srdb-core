@@ -10,7 +10,7 @@ crossScalaVersions := Seq("2.10.4","2.11.5")
 
 libraryDependencies ++= Seq(
   "org.postgresql" % "postgresql" % "9.3-1102-jdbc41" % "test",
-  "org.scalatest" % "scalatest_2.10" % "1.9.1" % "test",
+  "org.scalatest" %% "scalatest" % "2.2.4" % "test",
   "org.scalamock" %% "scalamock-scalatest-support" % "3.2" % "test"
 )
 
