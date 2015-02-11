@@ -1,6 +1,7 @@
 # SRDB: Scala Relational DataBase Api
 
 [![Build Status](https://travis-ci.org/agilogy/srdb-core.svg?branch=master)](https://travis-ci.org/agilogy/srdb-core)
+[![Coverage Status](https://coveralls.io/repos/agilogy/srdb-core/badge.svg)](https://coveralls.io/r/agilogy/srdb-core)
 
 This is a Work In Progress...
 
