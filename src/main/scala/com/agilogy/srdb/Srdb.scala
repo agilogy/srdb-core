@@ -8,8 +8,8 @@ class Srdb private[srdb](exceptionTranslator: ExceptionTranslator) {
 
   def select(query: String): ReadableQuery = new ReadableQuery {
     override def raw[T](readResultSet: Reader[T]): ExecutableQuery[T] = new ExecutableQuery[T] {
-      override def apply(conn: Connection, setStatementParameters: (PreparedStatement) => Unit): T = {
-        prepareStatement(conn, query, setStatementParameters, generatedKeys = false) {
+      override def apply[AT:ArgumentsSetter](conn: Connection, args:AT): T = {
+        prepareStatement(conn, query, args, generatedKeys = false) {
           ps =>
             secure {
               ps.executeQuery()
@@ -26,8 +26,8 @@ class Srdb private[srdb](exceptionTranslator: ExceptionTranslator) {
   }
 
   def executeUpdate(statement: String): ExecutableQuery[Int] = new ExecutableQuery[Int] {
-    override def apply(conn: Connection, setStatementParameters: (PreparedStatement) => Unit): Int = {
-      prepareStatement(conn, statement, setStatementParameters) {
+    override def apply[AT:ArgumentsSetter](conn: Connection, args:AT): Int = {
+      prepareStatement(conn, statement, args) {
         ps =>
           secure {
             ps.executeUpdate()
@@ -37,8 +37,8 @@ class Srdb private[srdb](exceptionTranslator: ExceptionTranslator) {
   }
 
   def executeUpdateGeneratedKeys[RT](statement: String)(readKey: ResultSet => RT): ExecutableQuery[RT] = new ExecutableQuery[RT] {
-    override def apply(conn: Connection, setStatementParameters: (PreparedStatement) => Unit): RT = {
-      prepareStatement(conn, statement, setStatementParameters, generatedKeys = true) {
+    override def apply[AT:ArgumentsSetter](conn: Connection, args:AT): RT = {
+      prepareStatement(conn, statement, args, generatedKeys = true) {
         ps: PreparedStatement =>
           val result = secure {
             ps.executeUpdate()
@@ -78,14 +78,14 @@ class Srdb private[srdb](exceptionTranslator: ExceptionTranslator) {
     }
   }
 
-  private def prepareStatement[T, DT](conn: Connection, query: String, setArguments: PreparedStatement => Unit, generatedKeys: Boolean = false)(f: (PreparedStatement => T)): T = {
+  private def prepareStatement[T, DT, AT:ArgumentsSetter](conn: Connection, query: String, arguments: AT, generatedKeys: Boolean = false)(f: (PreparedStatement => T)): T = {
     val prepareStatementFlag = if (generatedKeys) Statement.RETURN_GENERATED_KEYS else Statement.NO_GENERATED_KEYS
     val s = secure {
       conn.prepareStatement(query, prepareStatementFlag)
     }
     try {
       secure {
-        setArguments(s)
+        implicitly[ArgumentsSetter[AT]].set(s,arguments)
       }
       f(s)
     } finally {

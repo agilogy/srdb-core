@@ -9,23 +9,15 @@ package object srdb {
   type ExceptionTranslator = SQLException => Exception
 
   type Reader[T] = ResultSet => T
-  type ArgumentsSetter = PreparedStatement => Unit
   type Argument = (PreparedStatement, Int) => Unit
 
   def withExceptionTranslator(et: ExceptionTranslator): Srdb = new Srdb(et)
 
   trait ExecutableQuery[RT] {
 
-    private def argumentsSetter(args: Seq[Argument]): ArgumentsSetter = {
-      ps =>
-        args.zipWithIndex.foreach {
-          case (arg, pos) => arg(ps, pos + 1)
-        }
-    }
+    def apply(conn: Connection, args: Argument*): RT = apply(conn, args)
 
-    def apply(conn: Connection, args: Argument*): RT = apply(conn, argumentsSetter(args))
-
-    def apply(conn: Connection, args: ArgumentsSetter): RT
+    def apply[T:ArgumentsSetter](conn: Connection, args: T): RT
   }
 
   trait ReadableQuery {
