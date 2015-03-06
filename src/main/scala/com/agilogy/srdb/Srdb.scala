@@ -25,7 +25,7 @@ class Srdb private[srdb](exceptionTranslator: ExceptionTranslator) {
     }
   }
 
-  def executeUpdate(statement: String): ExecutableQuery[Int] = new ExecutableQuery[Int] {
+  def update(statement: String): ExecutableQuery[Int] = new ExecutableQuery[Int] {
     override def apply[AT:ArgumentsSetter](conn: Connection, args:AT): Int = {
       prepareStatement(conn, statement, args) {
         ps =>
@@ -36,7 +36,7 @@ class Srdb private[srdb](exceptionTranslator: ExceptionTranslator) {
     }
   }
 
-  def executeUpdateGeneratedKeys[RT](statement: String)(readKey: ResultSet => RT): ExecutableQuery[RT] = new ExecutableQuery[RT] {
+  def updateGeneratedKeys[RT](statement: String)(readKey: ResultSet => RT): ExecutableQuery[RT] = new ExecutableQuery[RT] {
     override def apply[AT:ArgumentsSetter](conn: Connection, args:AT): RT = {
       prepareStatement(conn, statement, args, generatedKeys = true) {
         ps: PreparedStatement =>

@@ -100,7 +100,7 @@ class QueriesTest extends FlatSpec with MockFactory{
       (ps.executeUpdate _).expects().returning(34)
       (ps.close _).expects()
     }
-    val res = executeUpdate(sql)(conn)
+    val res = update(sql)(conn)
     assert(res === 34)
   }
 
@@ -116,7 +116,7 @@ class QueriesTest extends FlatSpec with MockFactory{
       (rs.close _).expects()
       (ps.close _).expects()
     }
-    val res = executeUpdateGeneratedKeys(sql)(_.getLong(1))(conn)
+    val res = updateGeneratedKeys(sql)(_.getLong(1))(conn)
     assert(res === 34)
   }
 
