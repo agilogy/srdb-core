@@ -7,7 +7,8 @@ import scala.util.control.NonFatal
 class Srdb private[srdb](exceptionTranslator: ExceptionTranslator) {
 
   def select(query: String): ReadableQuery = new ReadableQuery {
-    override def raw[T](implicit readResultSet: Reader[T]): ExecutableQuery[T] = new ExecutableQuery[T] {
+    override def raw[T:Reader]: ExecutableQuery[T] = new ExecutableQuery[T] {
+      val readResultSet = implicitly[Reader[T]]
       override def apply[AT:ArgumentsSetter](conn: Connection, args:AT): T = {
         prepareStatement(conn, query, args, generatedKeys = false) {
           ps =>
@@ -36,7 +37,8 @@ class Srdb private[srdb](exceptionTranslator: ExceptionTranslator) {
     }
   }
 
-  def updateGeneratedKeys[RT](statement: String)(readKey: ResultSet => RT): ExecutableQuery[RT] = new ExecutableQuery[RT] {
+  def updateGeneratedKeys[RT:Reader](statement: String): ExecutableQuery[RT] = new ExecutableQuery[RT] {
+    val readKey = implicitly[Reader[RT]]
     override def apply[AT:ArgumentsSetter](conn: Connection, args:AT): RT = {
       prepareStatement(conn, statement, args, generatedKeys = true) {
         ps: PreparedStatement =>

@@ -23,11 +23,11 @@ package object srdb {
   }
 
   trait ReadableQuery {
-    def raw[T](implicit readResultSet: Reader[T]): ExecutableQuery[T]
+    def raw[T:Reader]: ExecutableQuery[T]
 
-    def apply[T](implicit rowReader: Reader[T]): ExecutableQuery[Seq[T]] = raw(asList(rowReader))
+    def apply[T:Reader]: ExecutableQuery[Seq[T]] = raw(asList(implicitly[Reader[T]]))
 
-    def single[T](implicit rowReader: Reader[T]): ExecutableQuery[Option[T]] = raw(asSingle(rowReader))
+    def single[T:Reader]: ExecutableQuery[Option[T]] = raw(asSingle(implicitly[Reader[T]]))
   }
 
   val Srdb = new Srdb(identity[SQLException])
