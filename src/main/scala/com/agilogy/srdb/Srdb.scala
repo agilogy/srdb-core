@@ -4,18 +4,17 @@ import java.sql._
 
 import scala.util.control.NonFatal
 
-class Srdb private[srdb](exceptionTranslator: ExceptionTranslator) {
+class Srdb private[srdb] (exceptionTranslator: ExceptionTranslator) {
 
   def select(query: String): ReadableQuery = new ReadableQuery {
-    override def raw[T:Reader]: ExecutableQuery[T] = new ExecutableQuery[T] {
+    override def raw[T: Reader]: ExecutableQuery[T] = new ExecutableQuery[T] {
       val readResultSet = implicitly[Reader[T]]
-      override def apply[AT:ArgumentsSetter](conn: Connection, args:AT): T = {
+      override def apply[AT: ArgumentsSetter](conn: Connection, args: AT): T = {
         prepareStatement(conn, query, args, generatedKeys = false) {
           ps =>
-            secure {
+            val rs = secure {
               ps.executeQuery()
             }
-            val rs = secure(ps.getResultSet)
             try {
               secure(readResultSet(rs))
             } finally {
@@ -27,8 +26,8 @@ class Srdb private[srdb](exceptionTranslator: ExceptionTranslator) {
   }
 
   def update(statement: String): ExecutableQuery[Int] = new ExecutableQuery[Int] {
-    override def apply[AT:ArgumentsSetter](conn: Connection, args:AT): Int = {
-      prepareStatement(conn, statement, args) {
+    override def apply[AT: ArgumentsSetter](conn: Connection, args: AT): Int = {
+      prepareStatement[Int, AT](conn, statement, args) {
         ps =>
           secure {
             ps.executeUpdate()
@@ -37,9 +36,9 @@ class Srdb private[srdb](exceptionTranslator: ExceptionTranslator) {
     }
   }
 
-  def updateGeneratedKeys[RT:Reader](statement: String): ExecutableQuery[RT] = new ExecutableQuery[RT] {
+  def updateGeneratedKeys[RT: Reader](statement: String): ExecutableQuery[RT] = new ExecutableQuery[RT] {
     val readKey = implicitly[Reader[RT]]
-    override def apply[AT:ArgumentsSetter](conn: Connection, args:AT): RT = {
+    override def apply[AT: ArgumentsSetter](conn: Connection, args: AT): RT = {
       prepareStatement(conn, statement, args, generatedKeys = true) {
         ps: PreparedStatement =>
           val result = secure {
@@ -63,7 +62,6 @@ class Srdb private[srdb](exceptionTranslator: ExceptionTranslator) {
     }
   }
 
-
   private def secure[T](f: => T): T = {
     try {
       f
@@ -80,14 +78,14 @@ class Srdb private[srdb](exceptionTranslator: ExceptionTranslator) {
     }
   }
 
-  private def prepareStatement[T, DT, AT:ArgumentsSetter](conn: Connection, query: String, arguments: AT, generatedKeys: Boolean = false)(f: (PreparedStatement => T)): T = {
+  private def prepareStatement[T, AT: ArgumentsSetter](conn: Connection, query: String, arguments: AT, generatedKeys: Boolean = false)(f: (PreparedStatement => T)): T = {
     val prepareStatementFlag = if (generatedKeys) Statement.RETURN_GENERATED_KEYS else Statement.NO_GENERATED_KEYS
     val s = secure {
       conn.prepareStatement(query, prepareStatementFlag)
     }
     try {
       secure {
-        implicitly[ArgumentsSetter[AT]].set(s,arguments)
+        implicitly[ArgumentsSetter[AT]].set(s, arguments)
       }
       f(s)
     } finally {
