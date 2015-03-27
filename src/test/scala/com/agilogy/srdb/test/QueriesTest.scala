@@ -1,8 +1,8 @@
 package com.agilogy.srdb.test
 
-import java.sql.{ Statement, ResultSet, PreparedStatement, Connection }
+import java.sql._
 
-import com.agilogy.srdb.Srdb
+import com.agilogy.srdb.{ Argument, Srdb }
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.FlatSpec
 
@@ -88,32 +88,36 @@ class QueriesTest extends FlatSpec with MockFactory {
     assert(res === None)
   }
 
-  behavior of "executeUpdate"
-
-  it should "execute simple updates" in {
+  it should "accept Argument instances as parameters" in {
     inSequence {
       expectPrepareStatement(conn)
-      (ps.executeUpdate _).expects().returning(34)
-      (ps.close _).expects()
+      (ps.setString _).expects(1, "foo")
+      (ps.setInt _).expects(2, 23)
+      (ps.executeQuery _).expects().returning(rs)
+      (rs.next _).expects().returning(false)
+      expectClose(rs, ps)
     }
-    val res = update(sql)(conn)
-    assert(res === 34)
+    val arg1: Argument = _.setString(_, "foo")
+    val arg2: Argument = _.setInt(_, 23)
+    val res = select(sql).single(_.getString("name"))(conn, arg1, arg2)
+    assert(res === None)
   }
 
-  behavior of "executeUpdateGeneratedKeys"
-
-  it should "execute updates that return generated keys" in {
+  it should "accept a single argument setter as parameter" in {
     inSequence {
-      (conn.prepareStatement(_: String, _: Int)).expects(sql, Statement.RETURN_GENERATED_KEYS).returning(ps)
-      (ps.executeUpdate _).expects()
-      (ps.getGeneratedKeys _).expects().returning(rs)
-      (rs.next _).expects().returning(true)
-      (rs.getLong(_: Int)).expects(1).returning(34)
-      (rs.close _).expects()
-      (ps.close _).expects()
+      expectPrepareStatement(conn)
+      (ps.setString _).expects(1, "foo")
+      (ps.setInt _).expects(2, 23)
+      (ps.executeQuery _).expects().returning(rs)
+      (rs.next _).expects().returning(false)
+      expectClose(rs, ps)
     }
-    val res = updateGeneratedKeys(sql)(_.getLong(1))(conn)
-    assert(res === 34)
+    val args = (ps: PreparedStatement) => {
+      ps.setString(1, "foo")
+      ps.setInt(2, 23)
+    }
+    val res = select(sql).single(_.getString("name"))(conn, args)
+    assert(res === None)
   }
 
 }
