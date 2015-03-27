@@ -29,19 +29,40 @@ scalacOptions ++= Seq(
   "-language:higherKinds",
   "-language:implicitConversions",
   "-unchecked",
-  "-Xfatal-warnings",
   "-Xlint",
   "-Yno-adapted-args",
-  "-Ywarn-dead-code",        // N.B. doesn't work well with the ??? hole
   "-Ywarn-numeric-widen",
   "-Ywarn-value-discard",
-  "-Xfuture",
-  "-Ywarn-unused-import",     // 2.11 only
-  "-P:linter:disable:PreferIfToBooleanMatch"
+  "-Xfuture"
 )
 
-// https://gist.github.com/leifwickland/3e4bf79562ce0a963bc8
-wartremoverErrors in (Compile, compile) ++= Warts.allBut(Wart.DefaultArguments, Wart.MutableDataStructures)
+// Execute static analysis via `lint:compile`
+val LintTarget = config("lint").extend(Compile)
+
+inConfig(LintTarget) {
+
+  Defaults.compileSettings ++
+    Seq(
+      sources in LintTarget := {
+        val lintSources = (sources in LintTarget).value
+        lintSources ++ (sources in Compile).value
+      },
+      scalacOptions in LintTarget ++= Seq(
+        "-Xfatal-warnings",
+        "-Ywarn-unused-import",
+        "-Ywarn-dead-code",
+        "-P:linter:disable:PreferIfToBooleanMatch"
+      ),
+      wartremoverErrors ++= Warts.allBut(Wart.DefaultArguments, Wart.MutableDataStructures)
+    )
+}
+
+scalacOptions in Compile := (scalacOptions in Compile).value filterNot { switch =>
+  switch.startsWith("-P:wartremover:") ||
+    "^-Xplugin:.*/org[.]brianmckenna/.*wartremover.*[.]jar$".r.pattern.matcher(switch).find ||
+    switch.startsWith("-P:linter:") ||
+    "^-Xplugin:.*/com[.]foursquare[.]lint/.*linter.*[.]jar$".r.pattern.matcher(switch).find
+}
 
 resolvers += "Linter Repository" at "https://hairyfotr.github.io/linteRepo/releases"
 
@@ -54,7 +75,6 @@ scalastyleFailOnError := true
 // Reformat at every compile.
 // See https://github.com/sbt/sbt-scalariform
 scalariformSettings
-
 
 ScoverageSbtPlugin.ScoverageKeys.coverageExcludedPackages := "<empty>"
 
