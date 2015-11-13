@@ -12,11 +12,11 @@ class Srdb private[srdb] (exceptionTranslator: ExceptionTranslator) {
       override def apply[AT: ArgumentsSetter](conn: Connection, args: AT): T = {
         prepareStatement(conn, query, args, generatedKeys = false) {
           ps =>
-            val rs = secure {
+            val rs = secure(query) {
               ps.executeQuery()
             }
             try {
-              secure(readResultSet(rs))
+              secure(query)(readResultSet(rs))
             } finally {
               rs.close()
             }
@@ -29,7 +29,7 @@ class Srdb private[srdb] (exceptionTranslator: ExceptionTranslator) {
     override def apply[AT: ArgumentsSetter](conn: Connection, args: AT): Int = {
       prepareStatement[Int, AT](conn, statement, args) {
         ps =>
-          secure {
+          secure(statement) {
             ps.executeUpdate()
           }
       }
@@ -41,15 +41,15 @@ class Srdb private[srdb] (exceptionTranslator: ExceptionTranslator) {
     override def apply[AT: ArgumentsSetter](conn: Connection, args: AT): RT = {
       prepareStatement(conn, statement, args, generatedKeys = true) {
         ps: PreparedStatement =>
-          val result = secure {
+          secure(statement) {
             ps.executeUpdate()
           }
-          val rs = secure {
+          val rs = secure(statement) {
             ps.getGeneratedKeys
           }
           try {
             if (rs.next) {
-              secure {
+              secure(statement) {
                 readKey(rs)
               }
             } else {
@@ -62,17 +62,17 @@ class Srdb private[srdb] (exceptionTranslator: ExceptionTranslator) {
     }
   }
 
-  private def secure[T](f: => T): T = {
+  private def secure[T](sql: String)(f: => T): T = {
     try {
       f
     } catch {
-      case e: SQLException => throw translateException(e)
+      case e: SQLException => throw translateException(sql, e)
     }
   }
 
-  private def translateException(sqle: SQLException): Exception = {
+  private def translateException(sql: String, sqle: SQLException): Exception = {
     try {
-      exceptionTranslator(sqle)
+      exceptionTranslator(sql, sqle)
     } catch {
       case NonFatal(e) => sqle
     }
@@ -80,11 +80,11 @@ class Srdb private[srdb] (exceptionTranslator: ExceptionTranslator) {
 
   private def prepareStatement[T, AT: ArgumentsSetter](conn: Connection, query: String, arguments: AT, generatedKeys: Boolean = false)(f: (PreparedStatement => T)): T = {
     val prepareStatementFlag = if (generatedKeys) Statement.RETURN_GENERATED_KEYS else Statement.NO_GENERATED_KEYS
-    val s = secure {
+    val s = secure(query) {
       conn.prepareStatement(query, prepareStatementFlag)
     }
     try {
-      secure {
+      secure(query) {
         implicitly[ArgumentsSetter[AT]].set(s, arguments)
       }
       f(s)

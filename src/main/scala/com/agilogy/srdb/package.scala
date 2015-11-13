@@ -2,18 +2,24 @@ package com.agilogy
 
 import java.sql.{ PreparedStatement, ResultSet, SQLException }
 
+import com.agilogy.srdb.ExceptionTranslator
+
 import scala.collection.mutable.ListBuffer
+
+class DefaultExceptionTranslator extends ExceptionTranslator {
+  override def apply(sql: String, t: SQLException): Exception = new SQLException("Error executing SQL " + sql, t.getSQLState, t.getErrorCode, t)
+}
 
 package object srdb {
 
-  type ExceptionTranslator = SQLException => Exception
+  type ExceptionTranslator = (String, SQLException) => Exception
 
   type Reader[T] = ResultSet => T
   type Argument = (PreparedStatement, Int) => Unit
 
   def withExceptionTranslator(et: ExceptionTranslator): Srdb = new Srdb(et)
 
-  val Srdb = new Srdb(identity[SQLException])
+  val Srdb = new Srdb(new DefaultExceptionTranslator)
 
   def asList[T](reader: Reader[T]): (ResultSet) => Seq[T] = {
     rs =>
