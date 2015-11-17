@@ -4,7 +4,7 @@ organization := "com.agilogy"
 
 name := "srdb-core"
 
-version := "1.0.2-SNAPSHOT"
+version := "2.0-SNAPSHOT"
 
 scalaVersion := "2.11.6"
 

@@ -5,6 +5,7 @@ import java.sql._
 import com.agilogy.srdb.{ Argument, Srdb }
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.FlatSpec
+import TestReader.read
 
 class QueriesTest extends FlatSpec with MockFactory {
   import Srdb._
@@ -41,40 +42,8 @@ class QueriesTest extends FlatSpec with MockFactory {
       expectIterateIntResults(rs)
       expectClose(rs, ps)
     }
-    val res = select(sql)(_.getInt("result"))(conn)
+    val res = select(sql)(read(_.getInt("result")))(conn)
     assert(res === Seq(4, 88))
-  }
-
-  behavior of "select.single"
-
-  it should "execute queries returning just one row" in {
-    inSequence {
-      expectPrepareStatement(conn)
-      (ps.executeQuery _).expects().returning(rs)
-      (rs.next _).expects().returning(true)
-      (rs.getString(_: String)).expects("name").returning("john")
-      (rs.next _).expects().returning(false)
-      expectClose(rs, ps)
-    }
-    val res = select(sql).single(_.getString("name"))(conn)
-    assert(res === Some("john"))
-  }
-
-  it should "fail if more than one row is found" in {
-    inSequence {
-      expectPrepareStatement(conn)
-      (ps.executeQuery _).expects().returning(rs)
-      (rs.next _).expects().returning(true)
-      (rs.getString(_: String)).expects("name").returning("john")
-      (rs.next _).expects().returning(true)
-      expectClose(rs, ps)
-    }
-    val res = try {
-      select(sql).single(_.getString("name"))(conn)
-      fail("Should have thrown an exception")
-    } catch {
-      case e: IllegalArgumentException => // Ok
-    }
   }
 
   it should "return no rows when no rows are found" in {
@@ -84,9 +53,11 @@ class QueriesTest extends FlatSpec with MockFactory {
       (rs.next _).expects().returning(false)
       expectClose(rs, ps)
     }
-    val res = select(sql).single(_.getString("name"))(conn)
-    assert(res === None)
+    val res = select(sql)(read(_.getString("name")))(conn)
+    assert(res === Seq.empty)
   }
+
+  behavior of "selects in general"
 
   it should "accept Argument instances as parameters" in {
     inSequence {
@@ -99,8 +70,8 @@ class QueriesTest extends FlatSpec with MockFactory {
     }
     val arg1: Argument = _.setString(_, "foo")
     val arg2: Argument = _.setInt(_, 23)
-    val res = select(sql).single(_.getString("name"))(conn, arg1, arg2)
-    assert(res === None)
+    val res = select(sql)(read(_.getString("name")))(conn, arg1, arg2)
+    assert(res === Seq.empty)
   }
 
   it should "accept a single argument setter as parameter" in {
@@ -116,8 +87,8 @@ class QueriesTest extends FlatSpec with MockFactory {
       ps.setString(1, "foo")
       ps.setInt(2, 23)
     }
-    val res = select(sql).single(_.getString("name"))(conn, args)
-    assert(res === None)
+    val res = select(sql)(read(_.getString("name")))(conn, args)
+    assert(res === Seq.empty)
   }
 
 }
