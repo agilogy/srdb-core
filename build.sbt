@@ -4,8 +4,6 @@ organization := "com.agilogy"
 
 name := "srdb-core"
 
-version := "2.0-SNAPSHOT"
-
 scalaVersion := "2.11.6"
 
 crossScalaVersions := Seq("2.10.4","2.11.6")
@@ -78,8 +76,6 @@ scalariformSettings
 
 ScoverageSbtPlugin.ScoverageKeys.coverageExcludedPackages := "<empty>"
 
-publishMavenStyle := false
-
 // --> bintray
 
 seq(bintrayPublishSettings:_*)
@@ -93,3 +89,15 @@ packageLabels in bintray := Seq("scala")
 licenses += ("Apache-2.0", url("https://www.apache.org/licenses/LICENSE-2.0.html"))
 
 // <-- bintray
+
+enablePlugins(GitVersioning)
+
+git.useGitDescribe := true
+
+publishMavenStyle := isSnapshot.value
+
+publishTo := {
+  val nexus = "http://188.166.95.201:8081/content/repositories/snapshots"
+  if (isSnapshot.value) Some("snapshots"  at nexus)
+  else publishTo.value
+}
