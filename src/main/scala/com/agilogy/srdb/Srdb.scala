@@ -2,6 +2,9 @@ package com.agilogy.srdb
 
 import java.sql._
 
+import com.agilogy.srdb.exceptions.Context
+import com.agilogy.srdb.exceptions._
+
 import scala.util.control.NonFatal
 
 class Srdb private[srdb] (exceptionTranslator: ExceptionTranslator) {
@@ -12,14 +15,14 @@ class Srdb private[srdb] (exceptionTranslator: ExceptionTranslator) {
       prepareStatement(conn, query, args, generatedKeys = false) {
         ps =>
           fetchSize match {
-            case LimitedFetchSize(fs) => secure(query)(ps.setFetchSize(fs))
+            case LimitedFetchSize(fs) => secure(Context.SetFetchSize(fs), query)(ps.setFetchSize(fs))
             case _ =>
           }
-          val rs = secure(query) {
+          val rs = secure(Context.ExecuteQuery, query) {
             ps.executeQuery()
           }
           try {
-            secure(query)(reader(rs))
+            secure(Context.ReadResultSet, query)(reader(rs))
           } finally {
             rs.close()
           }
@@ -31,7 +34,7 @@ class Srdb private[srdb] (exceptionTranslator: ExceptionTranslator) {
     override def apply[AT: ArgumentsSetter](conn: Connection, args: AT): Int = {
       prepareStatement[Int, AT](conn, statement, args) {
         ps =>
-          secure(statement) {
+          secure(Context.ExecuteUpdate, statement) {
             ps.executeUpdate()
           }
       }
@@ -43,19 +46,19 @@ class Srdb private[srdb] (exceptionTranslator: ExceptionTranslator) {
     override def apply[AT: ArgumentsSetter](conn: Connection, args: AT): RT = {
       prepareStatement(conn, statement, args, generatedKeys = true) {
         ps: PreparedStatement =>
-          secure(statement) {
+          secure(Context.ExecuteUpdate, statement) {
             ps.executeUpdate()
           }
-          val rs = secure(statement) {
+          val rs = secure(Context.GetGeneratedKeys, statement) {
             ps.getGeneratedKeys
           }
           try {
             if (rs.next) {
-              secure(statement) {
+              secure(Context.ReadGeneratedKeys, statement) {
                 readKey(rs)
               }
             } else {
-              throw new IllegalArgumentException("The statement didn't generate any key\n  Statement: " + statement)
+              throw new NoKeysGenerated(statement)
             }
           } finally {
             rs.close()
@@ -64,29 +67,32 @@ class Srdb private[srdb] (exceptionTranslator: ExceptionTranslator) {
     }
   }
 
-  private def secure[T](sql: String)(f: => T): T = {
+  private def secure[T](context: Context, sql: String)(f: => T): T = {
     try {
       f
     } catch {
-      case e: SQLException => throw translateException(sql, e)
+      case e: SQLException => throw translateException(context, sql, e)
     }
   }
 
-  private def translateException(sql: String, sqle: SQLException): Exception = {
+  private def translateException(context: Context, sql: String, sqle: SQLException): Exception = {
     try {
-      exceptionTranslator(sql, sqle)
+      exceptionTranslator(context, sql, sqle)
     } catch {
-      case NonFatal(e) => sqle
+      case NonFatal(e) =>
+        println(s"ALERT! Exception translating the original exception $sqle")
+        sqle.printStackTrace()
+        throw e
     }
   }
 
   private def prepareStatement[T, AT: ArgumentsSetter](conn: Connection, query: String, arguments: AT, generatedKeys: Boolean = false)(f: (PreparedStatement => T)): T = {
     val prepareStatementFlag = if (generatedKeys) Statement.RETURN_GENERATED_KEYS else Statement.NO_GENERATED_KEYS
-    val s = secure(query) {
+    val s = secure(Context.PrepareStatement(generatedKeys), query) {
       conn.prepareStatement(query, prepareStatementFlag)
     }
     try {
-      secure(query) {
+      secure(Context.SetArguments, query) {
         implicitly[ArgumentsSetter[AT]].set(s, arguments)
       }
       f(s)

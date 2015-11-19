@@ -2,9 +2,11 @@ package com.agilogy
 
 import java.sql.{ PreparedStatement, SQLException }
 
+import com.agilogy.srdb.exceptions.Context
+
 package object srdb {
 
-  type ExceptionTranslator = (String, SQLException) => Exception
+  type ExceptionTranslator = (Context, String, Throwable) => Exception
 
   type Argument = (PreparedStatement, Int) => Unit
 

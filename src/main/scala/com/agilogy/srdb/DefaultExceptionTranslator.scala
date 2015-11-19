@@ -2,7 +2,18 @@ package com.agilogy.srdb
 
 import java.sql.SQLException
 
+import com.agilogy.srdb.exceptions.{ DbExceptionWithCause, Context }
+
+import scala.util.control.NonFatal
+
 class DefaultExceptionTranslator extends ExceptionTranslator {
-  override def apply(sql: String, t: SQLException): Exception = new SQLException("Error executing SQL " + sql, t.getSQLState, t.getErrorCode, t)
+  override def apply(context: Context, sql: String, throwable: Throwable): Exception = {
+    throwable match {
+      case s: SQLException => DbExceptionWithCause(context, sql, s)
+      case NonFatal(t) => DbExceptionWithCause(context, sql, t)
+      case t => throw t
+    }
+
+  }
 }
 
