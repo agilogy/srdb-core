@@ -4,9 +4,9 @@ organization := "com.agilogy"
 
 name := "srdb-core"
 
-scalaVersion := "2.11.6"
+scalaVersion := "2.11.7"
 
-crossScalaVersions := Seq("2.10.4","2.11.6")
+crossScalaVersions := Seq("2.10.6","2.11.7")
 
 libraryDependencies ++= Seq(
   "org.postgresql" % "postgresql" % "9.3-1102-jdbc41" % "test",
