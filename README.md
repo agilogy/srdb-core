@@ -18,12 +18,95 @@ This is a Work In Progress...
 ```
 resolvers += Resolver.url("Agilogy Scala",url("http://dl.bintray.com/agilogy/scala/"))(Resolver.ivyStylePatterns)
 
-libraryDependencies += "com.agilogy" %% "srdb-core" % "1.0.1"
+libraryDependencies += "com.agilogy" %% "srdb-core" % "2.0"
 ```
 
 ## Usage
 
-TO-DO
+### Imports
+
+Usually, if you already like the default exception translator, only 2 imports are needed:
+
+```
+import com.agilogy.srdb._
+import com.agilogy.srdb.Srdb._
+```
+
+### selecting data
+
+- Example:
+
+	```
+	val readEmployees = readSeq{ rs =>
+		(rs.getString("name"),rs.getInt("age"))
+	}
+	val s1 = select("select name, age from employees")(readEmployees)
+	val results = s1(conn)
+	```
+
+### updating data
+
+- Example:
+
+	```
+	val u1 = update("update employees set salary = salary + 500.0")
+	val numberOfUpdatedEmployees = u1(conn)
+	```
+
+### setting statement parameters
+
+- Using one single function
+
+	```
+	val s2 = select("select name, age from employees where age > ? and age < ?")(readEmployees)
+	val results = s2(conn, { ps =>
+	  ps.setInt(1,25)
+	  ps.setInt(2,45)
+	})
+	```
+
+- Using multiple argument functions
+
+	```
+	val results = s2(conn, _.setInt(_,25), _.setInt(_,45))
+	```
+
+### Exceptions
+
+Srdb throws, by default, DbException:
+
+```
+trait DbException extends RuntimeException {
+  val context: Context
+  val sql: String
+  val causedBy: Option[Throwable]
+}
+
+```
+
+Context gives information about what was Srdb doing when the exception was produced. It is a sealed trait that may be:
+
+- GetGeneratedKeys
+- ExecuteQuery
+- PrepareStatement
+- SetArguments
+- ReadResultSet
+- ReadGeneratedKeys
+- SetFetchSize
+- ExecuteUpdate
+
+You can provide an exception translator to get the exceptions you prefer thrown. ExceptionTranslator is just a type alias for a function that takes a context, an sql string and a throwable and returns the exception to be thrown by Srdb:
+
+```
+type ExceptionTranslator = (Context, String, Throwable) => Exception
+```
+
+To use your own exception translator, create an Srdb instance using `withExceptionTranslator`:
+
+```
+val mySrdb:Srdb = com.agilogy.srdb.withExceptionTranslator((ctx,sql,exc) => exc)
+import mySrdb._
+```
 
 ## Copyright
 
