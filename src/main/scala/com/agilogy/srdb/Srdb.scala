@@ -1,6 +1,7 @@
 package com.agilogy.srdb
 
 import java.sql._
+import javax.sql.DataSource
 
 import com.agilogy.srdb.exceptions.Context
 import com.agilogy.srdb.exceptions._
@@ -8,6 +9,54 @@ import com.agilogy.srdb.exceptions._
 import scala.util.control.NonFatal
 
 class Srdb private[srdb] (exceptionTranslator: ExceptionTranslator) {
+
+  def close(conn: Connection): Unit = {
+    try {
+      if (!conn.isClosed) conn.close()
+    } catch {
+      case t: Throwable => t.printStackTrace()
+    }
+  }
+
+  def commitAndClose(conn: Connection): Unit = {
+    try {
+      conn.commit()
+    } finally {
+      close(conn)
+    }
+  }
+
+  def rollbackAndClose(conn: Connection): Unit = {
+    try {
+      if (!conn.isClosed) conn.rollback()
+    } finally {
+      close(conn)
+    }
+  }
+
+  def inTransaction[T](ds: DataSource)(f: Connection => T): T = {
+    val conn = ds.getConnection
+    try {
+      val res = f(conn)
+      commitAndClose(conn)
+      res
+    } catch {
+      case t: Throwable =>
+        rollbackAndClose(conn)
+        throw t
+    }
+  }
+
+  def withSavepoint[T](conn: Connection)(f: => T)(catchBlock: PartialFunction[Exception, T]): T = {
+    val savepoint = conn.setSavepoint()
+    try {
+      f
+    } catch {
+      case e: Exception if catchBlock.isDefinedAt(e) =>
+        conn.rollback(savepoint)
+        catchBlock(e)
+    }
+  }
 
   def select[T](query: String, fetchSize: FetchSize = DefaultFetchSize)(reader: ResultSet => T): ExecutableQuery[T] = new ExecutableQuery[T] {
 
