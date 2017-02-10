@@ -2,10 +2,9 @@ package com.agilogy.srdb.test
 
 import java.sql._
 
-import com.agilogy.srdb.{ Argument, Srdb }
+import com.agilogy.srdb._
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.FlatSpec
-import TestReader.read
 
 class QueriesTest extends FlatSpec with MockFactory {
   import Srdb._
@@ -42,7 +41,7 @@ class QueriesTest extends FlatSpec with MockFactory {
       expectIterateIntResults(rs)
       expectClose(rs, ps)
     }
-    val res = select(sql)(read(_.getInt("result")))(conn)
+    val res = select(sql)(readSeq(_.getInt("result")))(conn)
     assert(res === Seq(4, 88))
   }
 
@@ -53,7 +52,7 @@ class QueriesTest extends FlatSpec with MockFactory {
       (rs.next _).expects().returning(false)
       expectClose(rs, ps)
     }
-    val res = select(sql)(read(_.getString("name")))(conn)
+    val res = select(sql)(readSeq(_.getString("name")))(conn)
     assert(res === Seq.empty)
   }
 
@@ -68,9 +67,9 @@ class QueriesTest extends FlatSpec with MockFactory {
       (rs.next _).expects().returning(false)
       expectClose(rs, ps)
     }
-    val arg1: Argument = _.setString(_, "foo")
-    val arg2: Argument = _.setInt(_, 23)
-    val res = select(sql)(read(_.getString("name")))(conn, arg1, arg2)
+    //    val arg1: Argument = _.setString(_, "foo")
+    //    val arg2: Argument = _.setInt(_, 23)
+    val res = select(sql)(readSeq(_.getString("name")))(conn, _.setString(_, "foo"), _.setInt(_, 23))
     assert(res === Seq.empty)
   }
 
@@ -87,7 +86,7 @@ class QueriesTest extends FlatSpec with MockFactory {
       ps.setString(1, "foo")
       ps.setInt(2, 23)
     }
-    val res = select(sql)(read(_.getString("name")))(conn, args)
+    val res = select(sql)(readSeq(_.getString("name")))(conn, args)
     assert(res === Seq.empty)
   }
 

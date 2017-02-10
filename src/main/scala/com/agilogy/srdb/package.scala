@@ -1,8 +1,10 @@
 package com.agilogy
 
-import java.sql.{ PreparedStatement, SQLException }
+import java.sql.{ PreparedStatement, ResultSet, SQLException }
 
 import com.agilogy.srdb.exceptions.Context
+
+import scala.collection.mutable.ListBuffer
 
 package object srdb {
 
@@ -13,5 +15,14 @@ package object srdb {
   def withExceptionTranslator(et: ExceptionTranslator): Srdb = new Srdb(et)
 
   val Srdb = new Srdb(new DefaultExceptionTranslator)
+
+  def readSeq[T](readRow: ResultSet => T): ResultSet => Seq[T] = {
+    rs =>
+      val res = new ListBuffer[T]
+      while (rs.next()) {
+        res.append(readRow(rs))
+      }
+      res
+  }
 
 }

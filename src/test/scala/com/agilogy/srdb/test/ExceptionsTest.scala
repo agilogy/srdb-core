@@ -6,7 +6,6 @@ import com.agilogy.srdb._
 import com.agilogy.srdb.exceptions._
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.FlatSpec
-import TestReader.read
 
 import scala.reflect.ClassTag
 
@@ -14,12 +13,12 @@ class ExceptionsTest extends FlatSpec with MockFactory {
 
   import Srdb._
 
-  val conn = mock[Connection]
-  val ps = mock[PreparedStatement]
-  val rs = mock[ResultSet]
+  val conn: Connection = mock[Connection]
+  val ps: PreparedStatement = mock[PreparedStatement]
+  val rs: ResultSet = mock[ResultSet]
 
   val sql = "select * from foo"
-  val testReader = read(_.getString("name"))
+  val testReader: (ResultSet) => Seq[String] = readSeq(_.getString("name"))
 
   ignore should "throw exceptions untranslated" in {
     inSequence {
