@@ -37,6 +37,7 @@ class Srdb private[srdb] (exceptionTranslator: ExceptionTranslator) {
   def inTransaction[T](ds: DataSource)(f: Connection => T): T = {
     val conn = ds.getConnection
     try {
+      conn.setAutoCommit(false)
       val res = f(conn)
       commitAndClose(conn)
       res
