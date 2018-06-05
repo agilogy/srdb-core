@@ -1,6 +1,6 @@
 package com.agilogy
 
-import java.sql.{ PreparedStatement, ResultSet, SQLException }
+import java.sql.{ PreparedStatement, ResultSet }
 
 import com.agilogy.srdb.exceptions.Context
 

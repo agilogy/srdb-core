@@ -1,7 +1,5 @@
 package com.agilogy.srdb.exceptions
 
-import java.sql.SQLException
-
 trait Context {
   def causedWhen: String
 }
