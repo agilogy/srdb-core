@@ -20,14 +20,6 @@ class ExceptionsTest extends FlatSpec with MockFactory {
   val sql = "select * from foo"
   val testReader: (ResultSet) => Seq[String] = readSeq(_.getString("name"))
 
-  ignore should "throw exceptions untranslated" in {
-    inSequence {
-      (conn.prepareStatement(_: String, _: Int)).expects(sql, Statement.NO_GENERATED_KEYS).throwing(new SQLException("ouch!", "12345", 123))
-    }
-    val res = intercept[SQLException](select(sql)(testReader)(conn))
-    assert(res.getMessage === "Error executing SQL select * from foo")
-  }
-
   it should "translate thrown exceptions" in {
     inSequence {
       (conn.prepareStatement(_: String, _: Int)).expects(sql, Statement.NO_GENERATED_KEYS).throwing(new SQLException("ouch!", "12345", 123))
