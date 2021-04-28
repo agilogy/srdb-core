@@ -16,9 +16,9 @@ This is a Work In Progress...
 ## Installation
 
 ```
-resolvers += "Agilogy GitLab" at "https://gitlab.com/api/v4/groups/583742/packages/maven"
+resolvers += "Agilogy GitLab" at "https://gitlab.com/api/v4/groups/583742/-/packages/maven"
 
-libraryDependencies += "com.agilogy" %% "srdb-core" % "2.0"
+libraryDependencies += "com.agilogy" %% "srdb-core" % "2.2"
 ```
 
 ## Usage
@@ -113,7 +113,7 @@ import mySrdb._
 To publish this package to Agilogy's Package Registry, set the `GITLAB_DEPLOY_TOKEN` environment variable and then run the following command in sbt:
 
 ```
-sbt:simple-db> +publish
+sbt:srdb-core> +publish
 ```
 
 ## Copyright
