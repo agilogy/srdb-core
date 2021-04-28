@@ -1,4 +1,4 @@
-import bintray.Keys._
+import com.gilcloud.sbt.gitlab.{GitlabCredentials,GitlabPlugin}
 
 organization := "com.agilogy"
 
@@ -6,7 +6,7 @@ name := "srdb-core"
 
 scalaVersion := "2.12.6"
 
-crossScalaVersions := Seq("2.10.6","2.11.7","2.12.6")
+crossScalaVersions := Seq("2.11.7","2.12.6")
 
 libraryDependencies ++= Seq(
   "org.postgresql" % "postgresql" % "9.3-1102-jdbc41" % "test",
@@ -72,32 +72,27 @@ scalastyleFailOnError := true
 
 // Reformat at every compile.
 // See https://github.com/sbt/sbt-scalariform
-scalariformSettings
 
 coverageExcludedPackages := "<empty>"
 
-// --> bintray
+// --> gitlab
 
-seq(bintrayPublishSettings:_*)
+GitlabPlugin.autoImport.gitlabGroupId := None
+GitlabPlugin.autoImport.gitlabProjectId := Some(26236490)
+GitlabPlugin.autoImport.gitlabDomain := "gitlab.com"
 
-repository in bintray := "scala"
+GitlabPlugin.autoImport.gitlabCredentials := {
+    val token = sys.env.get("GITLAB_DEPLOY_TOKEN") match {
+        case Some(token) => token
+        case None =>
+            sLog.value.warn(s"Environment variable GITLAB_DEPLOY_TOKEN is undefined, 'publish' will fail.")
+            ""
+    }
+    Some(GitlabCredentials("Deploy-Token", token))
+}
 
-bintrayOrganization in bintray := Some("agilogy")
-
-packageLabels in bintray := Seq("scala")
-
-licenses += ("Apache-2.0", url("https://www.apache.org/licenses/LICENSE-2.0.html"))
-
-// <-- bintray
+// <-- gitlab
 
 enablePlugins(GitVersioning)
 
 git.useGitDescribe := true
-
-publishMavenStyle := isSnapshot.value
-
-publishTo := {
-  val nexus = "http://188.166.95.201:8081/content/repositories/snapshots"
-  if (isSnapshot.value) Some("snapshots"  at nexus)
-  else publishTo.value
-}
