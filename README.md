@@ -16,9 +16,9 @@ This is a Work In Progress...
 ## Installation
 
 ```
-resolvers += Resolver.url("Agilogy Scala",url("http://dl.bintray.com/agilogy/scala/"))(Resolver.ivyStylePatterns)
+resolvers += "Agilogy GitLab" at "https://gitlab.com/api/v4/groups/583742/-/packages/maven"
 
-libraryDependencies += "com.agilogy" %% "srdb-core" % "2.0"
+libraryDependencies += "com.agilogy" %% "srdb-core" % "2.2"
 ```
 
 ## Usage
@@ -106,6 +106,14 @@ To use your own exception translator, create an Srdb instance using `withExcepti
 ```
 val mySrdb:Srdb = com.agilogy.srdb.withExceptionTranslator((ctx,sql,exc) => exc)
 import mySrdb._
+```
+
+## Publishing
+
+To publish this package to Agilogy's Package Registry, set the `GITLAB_DEPLOY_TOKEN` environment variable and then run the following command in sbt:
+
+```
+sbt:srdb-core> +publish
 ```
 
 ## Copyright
