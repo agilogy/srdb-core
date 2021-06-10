@@ -1,6 +1,6 @@
 package com.agilogy.srdb
 
-import java.sql.{ PreparedStatement, Connection }
+import java.sql.{ Connection, PreparedStatement }
 
 trait ExecutableQuery[RT] {
 
@@ -11,3 +11,6 @@ trait ExecutableQuery[RT] {
   def apply[T: ArgumentsSetter](conn: Connection, args: T): RT
 }
 
+trait BatchUpdate {
+  def apply[T: ArgumentsSetter](conn: Connection, args: List[T]): scala.Array[Int]
+}
