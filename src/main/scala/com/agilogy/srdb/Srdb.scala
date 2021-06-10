@@ -1,12 +1,11 @@
 package com.agilogy.srdb
 
 import java.sql._
-import javax.sql.DataSource
-
-import com.agilogy.srdb.exceptions.Context
-import com.agilogy.srdb.exceptions._
 
 import scala.util.control.NonFatal
+
+import com.agilogy.srdb.exceptions.{ Context, _ }
+import javax.sql.DataSource
 
 class Srdb private[srdb] (exceptionTranslator: ExceptionTranslator) {
 
@@ -62,8 +61,9 @@ class Srdb private[srdb] (exceptionTranslator: ExceptionTranslator) {
   def select[T](query: String, fetchSize: FetchSize = DefaultFetchSize)(reader: ResultSet => T): ExecutableQuery[T] = new ExecutableQuery[T] {
 
     override def apply[AT: ArgumentsSetter](conn: Connection, args: AT): T = {
-      prepareStatement(conn, query, args, generatedKeys = false) {
+      prepareStatement(conn, query) {
         ps =>
+          setArguments(ps, args, query)
           fetchSize match {
             case LimitedFetchSize(fs) => secure(Context.SetFetchSize(fs), query)(ps.setFetchSize(fs))
             case _ =>
@@ -81,39 +81,53 @@ class Srdb private[srdb] (exceptionTranslator: ExceptionTranslator) {
   }
 
   def update(statement: String): ExecutableQuery[Int] = new ExecutableQuery[Int] {
-    override def apply[AT: ArgumentsSetter](conn: Connection, args: AT): Int = {
-      prepareStatement[Int, AT](conn, statement, args) {
-        ps =>
-          secure(Context.ExecuteUpdate, statement) {
-            ps.executeUpdate()
-          }
+    override def apply[AT: ArgumentsSetter](conn: Connection, args: AT): Int =
+      prepareStatement(conn, statement) { ps =>
+        setArguments(ps, args, statement)
+        secure(Context.ExecuteUpdate, statement) { ps.executeUpdate() }
       }
-    }
+  }
+
+  def batchUpdate(statement: String): BatchUpdate = new BatchUpdate {
+
+    override def apply[T: ArgumentsSetter](conn: Connection, args: List[T]): scala.Array[Int] =
+      prepareStatement(conn, statement) { ps =>
+        args.foreach { arg =>
+          setArguments(ps, arg, statement)
+          ps.addBatch()
+        }
+        secure(Context.ExecuteUpdate, statement) { ps.executeBatch() }
+      }
+
   }
 
   def updateGeneratedKeys[RT](statement: String)(readKey: ResultSet => RT): ExecutableQuery[RT] = new ExecutableQuery[RT] {
 
     override def apply[AT: ArgumentsSetter](conn: Connection, args: AT): RT = {
-      prepareStatement(conn, statement, args, generatedKeys = true) {
-        ps: PreparedStatement =>
-          secure(Context.ExecuteUpdate, statement) {
-            ps.executeUpdate()
-          }
-          val rs = secure(Context.GetGeneratedKeys, statement) {
-            ps.getGeneratedKeys
-          }
-          try {
-            if (rs.next) {
-              secure(Context.ReadGeneratedKeys, statement) {
-                readKey(rs)
-              }
-            } else {
-              throw new NoKeysGenerated(statement)
+      prepareStatement(conn, statement, generatedKeys = true) { ps: PreparedStatement =>
+        setArguments(ps, args, statement)
+        executeUpdate(statement, ps)
+        val rs = secure(Context.GetGeneratedKeys, statement) {
+          ps.getGeneratedKeys
+        }
+        try {
+          if (rs.next) {
+            secure(Context.ReadGeneratedKeys, statement) {
+              readKey(rs)
             }
-          } finally {
-            rs.close()
+          } else {
+            throw NoKeysGenerated(statement)
           }
+        } finally {
+          rs.close()
+        }
       }
+    }
+  }
+
+  private def executeUpdate[RT, AT: ArgumentsSetter](statement: String, ps: PreparedStatement) = {
+    secure(Context.ExecuteUpdate, statement) {
+      ps.executeUpdate()
     }
   }
 
@@ -136,15 +150,18 @@ class Srdb private[srdb] (exceptionTranslator: ExceptionTranslator) {
     }
   }
 
-  private def prepareStatement[T, AT: ArgumentsSetter](conn: Connection, query: String, arguments: AT, generatedKeys: Boolean = false)(f: (PreparedStatement => T)): T = {
+  private def setArguments[AT: ArgumentsSetter](ps: PreparedStatement, arguments: AT, query: String): Unit = {
+    secure(Context.SetArguments, query) {
+      implicitly[ArgumentsSetter[AT]].set(ps, arguments)
+    }
+  }
+
+  private def prepareStatement[T](conn: Connection, query: String, generatedKeys: Boolean = false)(f: PreparedStatement => T): T = {
     val prepareStatementFlag = if (generatedKeys) Statement.RETURN_GENERATED_KEYS else Statement.NO_GENERATED_KEYS
     val s = secure(Context.PrepareStatement(generatedKeys), query) {
       conn.prepareStatement(query, prepareStatementFlag)
     }
     try {
-      secure(Context.SetArguments, query) {
-        implicitly[ArgumentsSetter[AT]].set(s, arguments)
-      }
       f(s)
     } finally {
       s.close()
